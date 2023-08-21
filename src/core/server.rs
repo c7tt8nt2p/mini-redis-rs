@@ -1,10 +1,11 @@
 ﻿use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use tokio::io;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{ReadHalf, WriteHalf};
 use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::Mutex;
 
 use crate::config::app_config::BINDING_ADDRESS;
 use crate::core::handler::HandlerService;
@@ -14,11 +15,11 @@ const DEFAULT_BUFFER_SIZE: usize = 1024;
 type DataBuffer = [u8; DEFAULT_BUFFER_SIZE];
 
 pub struct ServerService {
-    handler_service: Arc<Mutex<dyn HandlerService + Send>>,
+    handler_service: Arc<Mutex<dyn HandlerService>>,
 }
 
 impl ServerService {
-    pub fn new(handler_service: Arc<Mutex<dyn HandlerService + Send>>) -> Self {
+    pub fn new(handler_service: Arc<Mutex<dyn HandlerService>>) -> Self {
         Self { handler_service }
     }
 
@@ -36,7 +37,7 @@ impl ServerService {
 }
 
 async fn handle_connection(
-    handler_service: Arc<Mutex<dyn HandlerService + Send>>,
+    handler_service: Arc<Mutex<dyn HandlerService>>,
     mut socket: TcpStream,
     address: SocketAddr,
 ) {
@@ -44,10 +45,8 @@ async fn handle_connection(
         let (mut reader, writer) = socket.split();
         let Some(raw_data) = read(&mut reader).await else { break; };
 
-        // writer.write_all(&data).await.unwrap()
         let handler_service = Arc::clone(&handler_service);
         let data: Vec<u8> = raw_data.into_iter().filter(|&byte| byte != 0).collect();
-        println!("data: {:?}", data);
         handle_non_subscription_connection(handler_service, writer, data).await;
         // print!("\t[{}]: {}", address, String::from_utf8(data).unwrap())
     }
@@ -64,16 +63,22 @@ async fn read(reader: &mut ReadHalf<'_>) -> Option<DataBuffer> {
 }
 
 async fn handle_non_subscription_connection(
-    handler_service: Arc<Mutex<dyn HandlerService + Send>>,
+    handler_service: Arc<Mutex<dyn HandlerService>>,
     mut writer: WriteHalf<'_>,
     data: Vec<u8>,
 ) {
     let cmd_type = parse_non_subscription_command(data);
     match cmd_type {
         NonSubscriptionCmdType::Exit => {
-            writer.shutdown().await.unwrap();
+            handler_service.lock().await.handle_exit(writer).await;
         }
-        NonSubscriptionCmdType::Ping(value) => {}
+        NonSubscriptionCmdType::Ping(value) => {
+            handler_service
+                .lock()
+                .await
+                .handle_ping(writer, value)
+                .await;
+        }
         NonSubscriptionCmdType::Set => {}
         NonSubscriptionCmdType::Get => {}
         NonSubscriptionCmdType::Subscribe => {}
