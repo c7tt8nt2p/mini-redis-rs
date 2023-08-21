@@ -2,24 +2,23 @@
 use std::sync::Arc;
 
 use tokio::io;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::tcp::{ReadHalf, WriteHalf};
+use tokio::io::AsyncReadExt;
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::Mutex;
+use tokio::net::tcp::{ReadHalf, WriteHalf};
 
 use crate::config::app_config::BINDING_ADDRESS;
 use crate::core::handler::HandlerService;
-use crate::core::parser::{parse_non_subscription_command, NonSubscriptionCmdType};
+use crate::core::parser::{NonSubscriptionCmdType, parse_non_subscription_command};
 
 const DEFAULT_BUFFER_SIZE: usize = 1024;
 type DataBuffer = [u8; DEFAULT_BUFFER_SIZE];
 
 pub struct ServerService {
-    handler_service: Arc<Mutex<dyn HandlerService>>,
+    handler_service: Arc<dyn HandlerService>,
 }
 
 impl ServerService {
-    pub fn new(handler_service: Arc<Mutex<dyn HandlerService>>) -> Self {
+    pub fn new(handler_service: Arc<dyn HandlerService>) -> Self {
         Self { handler_service }
     }
 
@@ -37,7 +36,7 @@ impl ServerService {
 }
 
 async fn handle_connection(
-    handler_service: Arc<Mutex<dyn HandlerService>>,
+    handler_service: Arc<dyn HandlerService>,
     mut socket: TcpStream,
     address: SocketAddr,
 ) {
@@ -63,19 +62,17 @@ async fn read(reader: &mut ReadHalf<'_>) -> Option<DataBuffer> {
 }
 
 async fn handle_non_subscription_connection(
-    handler_service: Arc<Mutex<dyn HandlerService>>,
-    mut writer: WriteHalf<'_>,
+    handler_service: Arc<dyn HandlerService>,
+    writer: WriteHalf<'_>,
     data: Vec<u8>,
 ) {
     let cmd_type = parse_non_subscription_command(data);
     match cmd_type {
         NonSubscriptionCmdType::Exit => {
-            handler_service.lock().await.handle_exit(writer).await;
+            handler_service.handle_exit(writer).await;
         }
         NonSubscriptionCmdType::Ping(value) => {
             handler_service
-                .lock()
-                .await
                 .handle_ping(writer, value)
                 .await;
         }

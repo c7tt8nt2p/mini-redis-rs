@@ -1,21 +1,16 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+
 use async_trait::async_trait;
 use tokio::sync::RwLock;
 
 #[async_trait]
 pub trait RedisService: Sync {
-    async fn get(&self, key: &str) -> Option<Vec<u8>>
-    where
-        Self: Sized;
+    async fn get(&self, key: &str) -> Option<Vec<u8>>;
 
-    async fn set(&self, key: String, value: Vec<u8>)
-    where
-        Self: Sized;
+    async fn set(&self, key: String, value: Vec<u8>);
 
-    async fn exists_by_key(&self, key: &str) -> bool
-    where
-        Self: Sized;
+    async fn exists_by_key(&self, key: &str) -> bool;
 }
 
 pub struct MyRedisService {
