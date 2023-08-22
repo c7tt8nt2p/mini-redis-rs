@@ -10,7 +10,7 @@ pub enum NonSubscriptionCmdType {
     Set(String, Vec<u8>),
     Get(String),
     Subscribe,
-    Other(Vec<u8>),
+    Other,
 }
 
 pub fn parse_non_subscription_command(command: Vec<u8>) -> NonSubscriptionCmdType {
@@ -30,7 +30,7 @@ pub fn parse_non_subscription_command(command: Vec<u8>) -> NonSubscriptionCmdTyp
     } else if is_subscribe(command_str) {
         NonSubscriptionCmdType::Subscribe
     } else {
-        NonSubscriptionCmdType::Other(command)
+        NonSubscriptionCmdType::Other
     }
 }
 

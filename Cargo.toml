@@ -19,5 +19,5 @@ path = "src/bin/server.rs"
 
 [dependencies]
 tokio = { version = "1.32.0", features = ["full"] }
-regex = "1.9.3"
 async-trait = "0.1.73"
+regex = "1.9.3"

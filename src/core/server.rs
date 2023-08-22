@@ -3,12 +3,12 @@ use std::sync::Arc;
 
 use tokio::io;
 use tokio::io::AsyncReadExt;
-use tokio::net::{TcpListener, TcpStream};
 use tokio::net::tcp::{ReadHalf, WriteHalf};
+use tokio::net::{TcpListener, TcpStream};
 
 use crate::config::app_config::BINDING_ADDRESS;
 use crate::core::handler::HandlerService;
-use crate::core::parser::{NonSubscriptionCmdType, parse_non_subscription_command};
+use crate::core::parser::{parse_non_subscription_command, NonSubscriptionCmdType};
 
 const DEFAULT_BUFFER_SIZE: usize = 1024;
 
@@ -80,8 +80,8 @@ async fn handle_non_subscription_connection(
             handler_service.handle_set(writer, key, value).await;
         }
         NonSubscriptionCmdType::Subscribe => {}
-        NonSubscriptionCmdType::Other(command) => {
-            handler_service.handle_other(writer, command).await;
+        NonSubscriptionCmdType::Other => {
+            handler_service.handle_other(writer).await;
         }
     }
 }

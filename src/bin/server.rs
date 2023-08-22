@@ -2,7 +2,6 @@
 use std::sync::Arc;
 
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt};
-use tokio::sync::Mutex;
 
 use crate::core::handler::{HandlerService, MyHandlerService};
 use crate::core::redis::MyRedisService;
