@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use tokio::sync::RwLock;
 
 #[async_trait]
-pub trait RedisService: Sync {
+pub trait RedisService: Send + Sync {
     async fn get(&self, key: &str) -> Option<Vec<u8>>;
 
     async fn set(&self, key: String, value: Vec<u8>);

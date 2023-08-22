@@ -11,7 +11,6 @@ use crate::core::handler::HandlerService;
 use crate::core::parser::{NonSubscriptionCmdType, parse_non_subscription_command};
 
 const DEFAULT_BUFFER_SIZE: usize = 1024;
-type DataBuffer = [u8; DEFAULT_BUFFER_SIZE];
 
 pub struct ServerService {
     handler_service: Arc<dyn HandlerService>,
@@ -24,10 +23,10 @@ impl ServerService {
 
     pub async fn start(&self) -> io::Result<()> {
         let listener = TcpListener::bind(BINDING_ADDRESS).await?;
-        println!("[Server] started...");
+        println!("server started...");
         loop {
             let (socket, address) = listener.accept().await?;
-            println!("[Server] accepted a new connection: {}", address);
+            println!("[{}] has connected", address);
 
             let handler_service = Arc::clone(&self.handler_service);
             tokio::spawn(async move { handle_connection(handler_service, socket, address).await });
@@ -42,20 +41,20 @@ async fn handle_connection(
 ) {
     loop {
         let (mut reader, writer) = socket.split();
-        let Some(raw_data) = read(&mut reader).await else { break; };
+        let Some(raw_data) = read(&mut reader, address.to_string()).await else { break; };
+        let read_data: Vec<u8> = raw_data.into_iter().filter(|&byte| byte != 0).collect();
 
         let handler_service = Arc::clone(&handler_service);
-        let data: Vec<u8> = raw_data.into_iter().filter(|&byte| byte != 0).collect();
-        handle_non_subscription_connection(handler_service, writer, data).await;
+        handle_non_subscription_connection(handler_service, writer, read_data).await;
         // print!("\t[{}]: {}", address, String::from_utf8(data).unwrap())
     }
 }
 
-async fn read(reader: &mut ReadHalf<'_>) -> Option<DataBuffer> {
-    let mut buffer: DataBuffer = [0u8; DEFAULT_BUFFER_SIZE];
+async fn read(reader: &mut ReadHalf<'_>, address: String) -> Option<[u8; DEFAULT_BUFFER_SIZE]> {
+    let mut buffer = [0u8; DEFAULT_BUFFER_SIZE];
     let size = reader.read(&mut buffer).await.unwrap();
     if size == 0 {
-        // client left
+        println!("[{}] disconnected", address);
         return None;
     }
     Some(buffer)
@@ -72,13 +71,17 @@ async fn handle_non_subscription_connection(
             handler_service.handle_exit(writer).await;
         }
         NonSubscriptionCmdType::Ping(value) => {
-            handler_service
-                .handle_ping(writer, value)
-                .await;
+            handler_service.handle_ping(writer, value).await;
         }
-        NonSubscriptionCmdType::Set => {}
-        NonSubscriptionCmdType::Get => {}
+        NonSubscriptionCmdType::Get(key) => {
+            handler_service.handle_get(writer, key.as_str()).await;
+        }
+        NonSubscriptionCmdType::Set(key, value) => {
+            handler_service.handle_set(writer, key, value).await;
+        }
         NonSubscriptionCmdType::Subscribe => {}
-        NonSubscriptionCmdType::Other => {}
+        NonSubscriptionCmdType::Other(command) => {
+            handler_service.handle_other(writer, command).await;
+        }
     }
 }

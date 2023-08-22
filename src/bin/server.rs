@@ -16,7 +16,7 @@ mod core;
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
-    let redis_service = Arc::new(Mutex::new(MyRedisService::new()));
+    let redis_service = Arc::new(MyRedisService::new());
     let handler_service = Arc::new(MyHandlerService::new(redis_service));
 
     let server_service = ServerService::new(handler_service);
