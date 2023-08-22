@@ -23,6 +23,9 @@ impl ServerService {
 
     pub async fn start(&self) -> io::Result<()> {
         let listener = TcpListener::bind(BINDING_ADDRESS).await?;
+        println!("===============================================================================================");
+        self.handler_service.handle_recover_from_cache().await?;
+        println!("===============================================================================================");
         println!("server started...");
         loop {
             let (socket, address) = listener.accept().await?;
@@ -68,20 +71,20 @@ async fn handle_non_subscription_connection(
     let cmd_type = parse_non_subscription_command(data);
     match cmd_type {
         NonSubscriptionCmdType::Exit => {
-            handler_service.handle_exit(writer).await;
+            handler_service.handle_exit_cmd(writer).await;
         }
         NonSubscriptionCmdType::Ping(value) => {
-            handler_service.handle_ping(writer, value).await;
+            handler_service.handle_ping_cmd(writer, value).await;
         }
         NonSubscriptionCmdType::Get(key) => {
-            handler_service.handle_get(writer, key.as_str()).await;
+            handler_service.handle_get_cmd(writer, key.as_str()).await;
         }
         NonSubscriptionCmdType::Set(key, value) => {
-            handler_service.handle_set(writer, key, value).await;
+            handler_service.handle_set_cmd(writer, key, value).await;
         }
         NonSubscriptionCmdType::Subscribe => {}
         NonSubscriptionCmdType::Other => {
-            handler_service.handle_other(writer).await;
+            handler_service.handle_other_cmd(writer).await;
         }
     }
 }

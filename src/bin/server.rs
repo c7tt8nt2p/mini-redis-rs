@@ -1,9 +1,9 @@
-﻿use std::io;
+﻿use crate::core::cache::reader::MyCacheReader;
+use std::io;
 use std::sync::Arc;
 
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt};
-
-use crate::core::handler::{HandlerService, MyHandlerService};
+use crate::core::cache::writer::MyCacheWriter;
+use crate::core::handler::MyHandlerService;
 use crate::core::redis::MyRedisService;
 use crate::core::server::ServerService;
 
@@ -15,7 +15,16 @@ mod core;
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
-    let redis_service = Arc::new(MyRedisService::new());
+    let cache_reader_service = Arc::new(MyCacheReader::new(
+        config::app_config::CACHE_FOLDER.to_owned(),
+    ));
+    let cache_writer_service = Arc::new(MyCacheWriter::new(
+        config::app_config::CACHE_FOLDER.to_owned(),
+    ));
+    let redis_service = Arc::new(MyRedisService::new(
+        cache_reader_service,
+        cache_writer_service,
+    ));
     let handler_service = Arc::new(MyHandlerService::new(redis_service));
 
     let server_service = ServerService::new(handler_service);

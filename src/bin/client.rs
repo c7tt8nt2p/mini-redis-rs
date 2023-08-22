@@ -3,9 +3,6 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
-#[path = "../config/mod.rs"]
-mod config;
-
 #[tokio::main]
 async fn main() -> io::Result<()> {
     let mut client = Client::connect("127.0.0.1:6973").await;
