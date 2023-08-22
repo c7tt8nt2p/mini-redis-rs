@@ -81,5 +81,5 @@ fn extract_set(command: &str) -> (&str, Vec<u8>) {
 }
 
 fn is_subscribe(command: &str) -> bool {
-    false
+    command.starts_with("subscribe ")
 }
