@@ -1,13 +1,12 @@
-﻿use crate::core::cache::reader::MyCacheReader;
-use std::io;
+﻿use std::io;
 use std::sync::Arc;
 
+use crate::core::cache::reader::MyCacheReader;
 use crate::core::cache::writer::MyCacheWriter;
 use crate::core::handler::MyHandlerService;
 use crate::core::redis::MyRedisService;
-use crate::core::server::ServerService;
+use crate::core::server::{MyServerService, ServerService};
 
-mod client;
 #[path = "../config/mod.rs"]
 mod config;
 #[path = "../core/mod.rs"]
@@ -27,7 +26,7 @@ async fn main() -> io::Result<()> {
     ));
     let handler_service = Arc::new(MyHandlerService::new(redis_service));
 
-    let server_service = ServerService::new(handler_service);
+    let server_service = MyServerService::new(handler_service);
 
     server_service.start().await
 }

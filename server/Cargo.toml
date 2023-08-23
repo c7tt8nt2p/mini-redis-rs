@@ -1,0 +1,16 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2021"
+
+
+# cargo build --bin server
+[[bin]]
+name = "server"
+path = "src/bin/server.rs"
+
+
+[dependencies]
+tokio = { version = "1.32.0", features = ["full"] }
+async-trait = "0.1.73"
+regex = "1.9.3"

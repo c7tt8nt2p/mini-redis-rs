@@ -37,26 +37,27 @@ impl HandlerService for MyHandlerService {
     }
 
     async fn handle_exit_cmd(&self, mut writer: WriteHalf<'_>) {
-        writer.shutdown().await.unwrap();
+        let _ = writer.shutdown().await;
     }
 
     async fn handle_ping_cmd(&self, mut writer: WriteHalf<'_>) {
-        writer.write_all(b">>> pong\n").await.unwrap();
+        writer.write_all(b"pong\n").await.unwrap();
     }
 
-    async fn handle_ping_value_cmd(&self, mut writer: WriteHalf<'_>, value: Vec<u8>) {
-        let format = format!(">>> {:?}\n", value);
-        writer.write_all(format.as_bytes()).await.unwrap();
+    async fn handle_ping_value_cmd(&self, mut writer: WriteHalf<'_>, mut value: Vec<u8>) {
+        value.push(b'\n');
+        println!("write >> {:?}", value);
+        writer.write_all(&value).await.unwrap();
     }
 
     async fn handle_get_cmd(&self, mut writer: WriteHalf<'_>, key: &str) {
         let tlv = self.redis_service.get(key).await;
         if let Some(tlv) = tlv {
-            let value = from_tlv(tlv);
-            let format = format!(">>> {:?}\n", value);
-            writer.write_all(format.as_bytes()).await.unwrap();
+            let mut value = from_tlv(tlv);
+            value.push(b'\n');
+            writer.write_all(&value).await.unwrap();
         } else {
-            writer.write_all(b">>> not found\n").await.unwrap();
+            writer.write_all(b"not found\n").await.unwrap();
         }
     }
 
@@ -74,10 +75,10 @@ impl HandlerService for MyHandlerService {
             );
         }
 
-        writer.write_all(b">>> set ok\n").await.unwrap();
+        writer.write_all(b"set ok\n").await.unwrap();
     }
 
     async fn handle_other_cmd(&self, mut writer: WriteHalf<'_>) {
-        writer.write_all(b">>> unknown\n").await.unwrap();
+        writer.write_all(b"unknown\n").await.unwrap();
     }
 }

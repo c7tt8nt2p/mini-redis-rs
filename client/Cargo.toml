@@ -1,0 +1,15 @@
+[package]
+name = "client"
+version = "0.1.0"
+edition = "2021"
+
+# cargo build --bin client
+[[bin]]
+name = "client"
+path = "src/bin/client.rs"
+
+
+[dependencies]
+#server = { path = "../server" }
+tokio = { version = "1.32.0", features = ["full"] }
+async-trait = "0.1.73"
