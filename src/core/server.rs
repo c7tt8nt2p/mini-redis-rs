@@ -74,7 +74,7 @@ async fn handle_non_subscription_connection(
             handler_service.handle_exit_cmd(writer).await;
         }
         NonSubscriptionCmdType::Ping => {
-
+            handler_service.handle_ping_cmd(writer).await;
         }
         NonSubscriptionCmdType::PingValue(value) => {
             handler_service.handle_ping_value_cmd(writer, value).await;

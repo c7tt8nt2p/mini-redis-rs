@@ -41,7 +41,7 @@ impl HandlerService for MyHandlerService {
     }
 
     async fn handle_ping_cmd(&self, mut writer: WriteHalf<'_>) {
-        writer.write_all(b">pong\n").await.unwrap();
+        writer.write_all(b">>> pong\n").await.unwrap();
     }
 
     async fn handle_ping_value_cmd(&self, mut writer: WriteHalf<'_>, value: Vec<u8>) {
