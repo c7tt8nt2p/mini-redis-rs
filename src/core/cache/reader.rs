@@ -31,7 +31,6 @@ impl CacheReaderService for MyCacheReader {
                 let file_name = entry.file_name();
                 let file_name = file_name.to_str().unwrap().to_owned();
                 cache.insert(file_name, file_contents.clone());
-                println!("File content: {:?}", file_contents);
             }
         }
         println!("reading cache... done");

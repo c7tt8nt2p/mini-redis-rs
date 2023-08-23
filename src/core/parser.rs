@@ -1,12 +1,13 @@
 use regex::Regex;
 
-const PING_REGEX: &str = "^ping (.+)$";
-const GET_REGEX: &str = "^get ([a-zA-Z0-9]+)$";
-const SET_REGEX: &str = "^set ([a-zA-Z0-9]+) (.+)$";
+const PING_VALUE_REGEX: &str = "^(?i)ping(?-i) (.+)$";
+const GET_REGEX: &str = "^(?i)get(?-i) ([a-zA-Z0-9]+)$";
+const SET_REGEX: &str = "^(?i)set(?-i) ([a-zA-Z0-9]+) (.+)$";
 
 pub enum NonSubscriptionCmdType {
     Exit,
-    Ping(Vec<u8>),
+    Ping,
+    PingValue(Vec<u8>),
     Set(String, Vec<u8>),
     Get(String),
     Subscribe,
@@ -14,13 +15,15 @@ pub enum NonSubscriptionCmdType {
 }
 
 pub fn parse_non_subscription_command(command: Vec<u8>) -> NonSubscriptionCmdType {
-    let command_str = String::from_utf8_lossy(&command).trim().to_lowercase();
-    let command_str = command_str.as_str();
+    let command_str = String::from_utf8_lossy(&command);
+    let command_str = command_str.trim();
     if is_exit(command_str) {
         NonSubscriptionCmdType::Exit
     } else if is_ping(command_str) {
-        let value = extract_ping(command_str).unwrap_or(Vec::new());
-        NonSubscriptionCmdType::Ping(value)
+        NonSubscriptionCmdType::Ping
+    } else if is_ping_value(command_str) {
+        let value = extract_ping_with_value(command_str).unwrap_or(Vec::new());
+        NonSubscriptionCmdType::PingValue(value)
     } else if is_get(command_str) {
         let key = extract_get(command_str);
         NonSubscriptionCmdType::Get(key.to_owned())
@@ -39,11 +42,15 @@ fn is_exit(command: &str) -> bool {
 }
 
 fn is_ping(command: &str) -> bool {
-    Regex::new(PING_REGEX).unwrap().captures(command).is_some()
+    command == "ping"
 }
 
-fn extract_ping(command: &str) -> Option<Vec<u8>> {
-    Regex::new(PING_REGEX)
+fn is_ping_value(command: &str) -> bool {
+    Regex::new(PING_VALUE_REGEX).unwrap().captures(command).is_some()
+}
+
+fn extract_ping_with_value(command: &str) -> Option<Vec<u8>> {
+    Regex::new(PING_VALUE_REGEX)
         .unwrap()
         .captures(command)
         .and_then(|c| c.get(1))
