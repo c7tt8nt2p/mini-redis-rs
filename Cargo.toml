@@ -9,4 +9,9 @@ members = [
     "server",
 ]
 
+[dev-dependencies]
+tokio = { version = "1.32.0", features = ["full"] }
+client = { path = "./client" }
+server = { path = "./server" }
+tempdir = "0.3.7"
 

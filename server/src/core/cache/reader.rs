@@ -13,8 +13,10 @@ pub struct MyCacheReader {
 }
 
 impl MyCacheReader {
-    pub fn new(folder: String) -> Self {
-        Self { folder }
+    pub fn new(folder: &str) -> Self {
+        Self {
+            folder: folder.to_owned(),
+        }
     }
 }
 

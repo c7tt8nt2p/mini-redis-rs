@@ -1,5 +1,4 @@
-﻿use std::io::ErrorKind::InvalidData;
-use std::net::SocketAddr;
+﻿use std::net::SocketAddr;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -7,8 +6,8 @@ use tokio::io;
 use tokio::io::AsyncReadExt;
 use tokio::net::tcp::{ReadHalf, WriteHalf};
 use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::oneshot;
 
-use crate::config::app_config::BINDING_ADDRESS;
 use crate::core::handler::HandlerService;
 use crate::core::parser::{parse_non_subscription_command, NonSubscriptionCmdType};
 
@@ -16,31 +15,39 @@ const DEFAULT_BUFFER_SIZE: usize = 1024;
 
 #[async_trait]
 pub trait ServerService: Send + Sync {
-    async fn start(&self) -> io::Result<()>;
+    /// started_notify is a oneshot channel tx to notify the receiver that the server is successfully started.
+    async fn start(&self, started_signal_tx: oneshot::Sender<u16>) -> io::Result<()>;
 }
 
 pub struct MyServerService {
+    connection_address: String,
     handler_service: Arc<dyn HandlerService>,
 }
 
 impl MyServerService {
-    pub fn new(handler_service: Arc<dyn HandlerService>) -> Self {
-        Self { handler_service }
+    pub fn new(connection_address: &str, handler_service: Arc<dyn HandlerService>) -> Self {
+        Self {
+            connection_address: connection_address.to_owned(),
+            handler_service,
+        }
     }
 }
 
 #[async_trait]
 impl ServerService for MyServerService {
-    async fn start(&self) -> io::Result<()> {
-        let listener = TcpListener::bind(BINDING_ADDRESS).await?;
+    async fn start(&self, started_signal_tx: oneshot::Sender<u16>) -> io::Result<()> {
+        let listener = TcpListener::bind(self.connection_address.to_owned()).await?;
         println!("===============================================================================================");
         self.handler_service.handle_cache_recovering().await?;
         println!("===============================================================================================");
-        println!("server started...");
+        println!("server started...", );
+
+        let port = listener.local_addr().unwrap().port();
+        started_signal_tx.send(port).unwrap();
+
         loop {
             let (socket, address) = listener.accept().await?;
             println!("[{}] has connected", address);
-
             let handler_service = Arc::clone(&self.handler_service);
             tokio::spawn(async move { handle_connection(handler_service, socket, address).await });
         }
@@ -59,7 +66,6 @@ async fn handle_connection(
             break;
         };
         let read_data: Vec<u8> = raw_data.into_iter().filter(|&byte| byte != 0).collect();
-        println!("got: {:?}", read_data);
         let handler_service = Arc::clone(&handler_service);
         handle_non_subscription_connection(handler_service, writer, read_data).await;
         // print!("\t[{}]: {}", address, String::from_utf8(data).unwrap())

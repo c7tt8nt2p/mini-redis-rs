@@ -1,35 +1,30 @@
 ﻿use std::io;
 use std::sync::Arc;
+use tokio::sync::oneshot;
 
-use crate::core::cache::reader::MyCacheReader;
-use crate::core::cache::writer::MyCacheWriter;
-use crate::core::handler::MyHandlerService;
-use crate::core::redis::MyRedisService;
-use crate::core::server::{MyServerService, ServerService};
-
-#[path = "../config/mod.rs"]
-mod config;
-#[path = "../core/mod.rs"]
-mod core;
+use server::config::app_config as config;
+use server::core::cache::reader::MyCacheReader;
+use server::core::cache::writer::MyCacheWriter;
+use server::core::handler::MyHandlerService;
+use server::core::redis::MyRedisService;
+use server::core::server::{MyServerService, ServerService};
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
-    let cache_reader_service = Arc::new(MyCacheReader::new(
-        config::app_config::CACHE_FOLDER.to_owned(),
-    ));
-    let cache_writer_service = Arc::new(MyCacheWriter::new(
-        config::app_config::CACHE_FOLDER.to_owned(),
-    ));
+    let cache_reader_service = Arc::new(MyCacheReader::new(config::CACHE_FOLDER));
+    let cache_writer_service = Arc::new(MyCacheWriter::new(config::CACHE_FOLDER));
     let redis_service = Arc::new(MyRedisService::new(
         cache_reader_service,
         cache_writer_service,
     ));
     let handler_service = Arc::new(MyHandlerService::new(redis_service));
 
-    let server_service = MyServerService::new(handler_service);
+    let server_service = MyServerService::new(config::BINDING_ADDRESS, handler_service);
 
-    server_service.start().await
+    let (tx, _rx) = oneshot::channel::<()>();
+    server_service.start(tx, ).await
 }
+
 // =================================================================
 // =================================================================
 
