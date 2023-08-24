@@ -21,8 +21,8 @@ async fn main() -> io::Result<()> {
 
     let server_service = MyServerService::new(config::BINDING_ADDRESS, handler_service);
 
-    let (tx, _rx) = oneshot::channel::<()>();
-    server_service.start(tx, ).await
+    let (tx, _rx) = oneshot::channel::<u16>();
+    server_service.start(tx).await
 }
 
 // =================================================================

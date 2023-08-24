@@ -7,7 +7,7 @@ pub fn new_client(address: &str) -> MyClientService {
     MyClientService::new(address)
 }
 
-pub async fn read_message(mut reader: ReadHalf<'_>) -> Vec<u8> {
+pub async fn read_message(reader: &mut ReadHalf<'_>) -> Vec<u8> {
     let mut buffer = [0u8; 1024];
     let _ = reader
         .read(&mut buffer)

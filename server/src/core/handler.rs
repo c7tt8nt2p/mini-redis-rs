@@ -61,9 +61,7 @@ impl HandlerService for MyHandlerService {
     }
 
     async fn handle_set_cmd(&self, mut writer: WriteHalf<'_>, key: String, value: Vec<u8>) {
-        println!("[get] value = {:?}", value);
         let tlv = to_tlv(value, TLVType::String);
-        println!("[set] tlv = {:?}", tlv);
         self.redis_service.set(key.clone(), tlv.clone()).await;
         let cache_result = self.redis_service.write_cache(key.clone(), tlv).await;
         if cache_result.is_err() {

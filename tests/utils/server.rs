@@ -37,7 +37,7 @@ fn new_server(address: &str, cache_folder: &str) -> MyServerService {
     MyServerService::new(address, handler_service)
 }
 
-pub async fn write_message(mut writer: WriteHalf<'_>, message: &str) {
+pub async fn write_message(writer: &mut WriteHalf<'_>, message: &str) {
     let _ = writer.write_all(message.as_bytes()).await;
 }
 

@@ -4,6 +4,7 @@ const PING_VALUE_REGEX: &str = "^(?i)ping(?-i) (.+)$";
 const GET_REGEX: &str = "^(?i)get(?-i) ([a-zA-Z0-9]+)$";
 const SET_REGEX: &str = "^(?i)set(?-i) ([a-zA-Z0-9]+) (.+)$";
 
+#[derive(Debug)]
 pub enum NonSubscriptionCmdType {
     Exit,
     Ping,
