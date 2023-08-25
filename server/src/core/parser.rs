@@ -5,7 +5,7 @@ const GET_REGEX: &str = "^(?i)get(?-i) ([a-zA-Z0-9]+)$";
 const SET_REGEX: &str = "^(?i)set(?-i) ([a-zA-Z0-9]+) (.+)$";
 const SUBSCRIBE_REGEX: &str = "^(?i)subscribe(?-i) ([a-zA-Z0-9]+)$";
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum NonSubscriptionCmdType {
     Exit,
     Ping,
@@ -16,7 +16,7 @@ pub enum NonSubscriptionCmdType {
     Other,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum SubscriptionCmdType {
     Publish(Vec<u8>),
     Unsubscribe,
@@ -129,4 +129,84 @@ fn extract_subscribe(command: &str) -> &str {
 
 fn is_unsubscribe(command: &str) -> bool {
     command == "unsubscribe"
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_parse_exit() {
+        let cmd = "exit".as_bytes().to_vec();
+        let cmd_type = parse_non_subscription_command(cmd);
+        assert_eq!(NonSubscriptionCmdType::Exit, cmd_type);
+    }
+
+    #[tokio::test]
+    async fn test_parse_ping() {
+        let cmd = "ping".as_bytes().to_vec();
+        let cmd_type = parse_non_subscription_command(cmd);
+        assert_eq!(NonSubscriptionCmdType::Ping, cmd_type);
+    }
+
+    #[tokio::test]
+    async fn test_parse_ping_value() {
+        let cmd = "ping xxx".as_bytes().to_vec();
+        let cmd_type = parse_non_subscription_command(cmd);
+        assert_eq!(
+            NonSubscriptionCmdType::PingValue("xxx".as_bytes().to_vec()),
+            cmd_type
+        );
+    }
+
+    #[tokio::test]
+    async fn test_parse_get() {
+        let cmd = "get a".as_bytes().to_vec();
+        let cmd_type = parse_non_subscription_command(cmd);
+        assert_eq!(NonSubscriptionCmdType::Get("a".to_owned()), cmd_type);
+    }
+
+    #[tokio::test]
+    async fn test_parse_set() {
+        let cmd = "set a a".as_bytes().to_vec();
+        let cmd_type = parse_non_subscription_command(cmd);
+        assert_eq!(
+            NonSubscriptionCmdType::Set("a".to_owned(), "a".as_bytes().to_vec()),
+            cmd_type
+        );
+    }
+
+    #[tokio::test]
+    async fn test_parse_subscribe() {
+        let cmd = "subscribe topic1".as_bytes().to_vec();
+        let cmd_type = parse_non_subscription_command(cmd);
+        assert_eq!(
+            NonSubscriptionCmdType::Subscribe("topic1".to_owned()),
+            cmd_type
+        );
+    }
+
+    #[tokio::test]
+    async fn test_parse_other() {
+        let cmd = "xxx".as_bytes().to_vec();
+        let cmd_type = parse_non_subscription_command(cmd);
+        assert_eq!(NonSubscriptionCmdType::Other, cmd_type);
+    }
+
+    #[tokio::test]
+    async fn test_parse_unsubscribe() {
+        let cmd = "unsubscribe".as_bytes().to_vec();
+        let cmd_type = parse_subscription_command(cmd);
+        assert_eq!(SubscriptionCmdType::Unsubscribe, cmd_type);
+    }
+
+    #[tokio::test]
+    async fn test_parse_publish() {
+        let cmd = "hello 123".as_bytes().to_vec();
+        let cmd_type = parse_subscription_command(cmd);
+        assert_eq!(
+            SubscriptionCmdType::Publish("hello 123".as_bytes().to_vec()),
+            cmd_type
+        );
+    }
 }

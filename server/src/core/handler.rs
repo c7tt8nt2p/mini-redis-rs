@@ -1,3 +1,5 @@
+#[cfg(test)]
+use mockall::{automock, mock, predicate::*};
 use std::net::SocketAddr;
 use std::sync::Arc;
 

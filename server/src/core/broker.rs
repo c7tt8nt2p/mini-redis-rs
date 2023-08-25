@@ -3,6 +3,8 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+#[cfg(test)]
+use mockall::automock;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::RwLock;
 
@@ -24,6 +26,7 @@ impl PartialEq for Subscriber {
     }
 }
 
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub trait BrokerService: Send + Sync {
     async fn is_subscription_connection(&self, socket_addr: SocketAddr) -> bool;
@@ -95,5 +98,17 @@ impl BrokerService for MyBrokerService {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_my_broker_service_new() {
+        let service = MyBrokerService::new();
+        assert!(service.clients.read().await.is_empty());
+        assert!(service.subscribers.read().await.is_empty());
     }
 }

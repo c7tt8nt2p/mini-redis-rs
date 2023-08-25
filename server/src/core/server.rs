@@ -1,4 +1,8 @@
-﻿use std::net::SocketAddr;
+﻿
+#[cfg(test)]
+use mockall::{automock, mock, predicate::*};
+
+use std::net::SocketAddr;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -17,6 +21,7 @@ use crate::core::parser::{
 
 const DEFAULT_BUFFER_SIZE: usize = 1024;
 
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub trait ServerService: Send + Sync {
     /// started_notify is a oneshot channel tx to notify the receiver with a port that the server is successfully started.
