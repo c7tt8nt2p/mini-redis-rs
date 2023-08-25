@@ -3,6 +3,7 @@ use regex::Regex;
 const PING_VALUE_REGEX: &str = "^(?i)ping(?-i) (.+)$";
 const GET_REGEX: &str = "^(?i)get(?-i) ([a-zA-Z0-9]+)$";
 const SET_REGEX: &str = "^(?i)set(?-i) ([a-zA-Z0-9]+) (.+)$";
+const SUBSCRIBE_REGEX: &str = "^(?i)subscribe(?-i) ([a-zA-Z0-9]+)$";
 
 #[derive(Debug)]
 pub enum NonSubscriptionCmdType {
@@ -11,8 +12,14 @@ pub enum NonSubscriptionCmdType {
     PingValue(Vec<u8>),
     Set(String, Vec<u8>),
     Get(String),
-    Subscribe,
+    Subscribe(String),
     Other,
+}
+
+#[derive(Debug)]
+pub enum SubscriptionCmdType {
+    Publish(Vec<u8>),
+    Unsubscribe,
 }
 
 pub fn parse_non_subscription_command(command: Vec<u8>) -> NonSubscriptionCmdType {
@@ -32,9 +39,20 @@ pub fn parse_non_subscription_command(command: Vec<u8>) -> NonSubscriptionCmdTyp
         let (key, value) = extract_set(command_str);
         NonSubscriptionCmdType::Set(key.to_owned(), value.to_owned())
     } else if is_subscribe(command_str) {
-        NonSubscriptionCmdType::Subscribe
+        let topic = extract_subscribe(command_str);
+        NonSubscriptionCmdType::Subscribe(topic.to_owned())
     } else {
         NonSubscriptionCmdType::Other
+    }
+}
+
+pub fn parse_subscription_command(command: Vec<u8>) -> SubscriptionCmdType {
+    let command_str = String::from_utf8_lossy(&command);
+    let command_str = command_str.trim();
+    if is_unsubscribe(command_str) {
+        SubscriptionCmdType::Unsubscribe
+    } else {
+        SubscriptionCmdType::Publish(command)
     }
 }
 
@@ -47,7 +65,10 @@ fn is_ping(command: &str) -> bool {
 }
 
 fn is_ping_value(command: &str) -> bool {
-    Regex::new(PING_VALUE_REGEX).unwrap().captures(command).is_some()
+    Regex::new(PING_VALUE_REGEX)
+        .unwrap()
+        .captures(command)
+        .is_some()
 }
 
 fn extract_ping_with_value(command: &str) -> Option<Vec<u8>> {
@@ -89,5 +110,23 @@ fn extract_set(command: &str) -> (&str, Vec<u8>) {
 }
 
 fn is_subscribe(command: &str) -> bool {
-    command.starts_with("subscribe ")
+    Regex::new(SUBSCRIBE_REGEX)
+        .unwrap()
+        .captures(command)
+        .is_some()
+}
+
+fn extract_subscribe(command: &str) -> &str {
+    Regex::new(SUBSCRIBE_REGEX)
+        .unwrap()
+        .captures(command)
+        .map(|c| {
+            let (_, [topic]) = c.extract();
+            topic
+        })
+        .unwrap()
+}
+
+fn is_unsubscribe(command: &str) -> bool {
+    command == "unsubscribe"
 }

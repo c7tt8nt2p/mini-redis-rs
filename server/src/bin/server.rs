@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tokio::sync::oneshot;
 
 use server::config::app_config as config;
+use server::core::broker::MyBrokerService;
 use server::core::cache::reader::MyCacheReader;
 use server::core::cache::writer::MyCacheWriter;
 use server::core::handler::MyHandlerService;
@@ -17,7 +18,8 @@ async fn main() -> io::Result<()> {
         cache_reader_service,
         cache_writer_service,
     ));
-    let handler_service = Arc::new(MyHandlerService::new(redis_service));
+    let broker_service = Arc::new(MyBrokerService::new());
+    let handler_service = Arc::new(MyHandlerService::new(redis_service, broker_service));
 
     let server_service = MyServerService::new(config::BINDING_ADDRESS, handler_service);
 
