@@ -1,20 +1,16 @@
 use std::sync::Arc;
 
-use tempdir::TempDir;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{ReadHalf, WriteHalf};
 use tokio::sync::oneshot;
 use tokio::sync::oneshot::Receiver;
 
+use server::core::broker::MyBrokerService;
 use server::core::cache::reader::MyCacheReader;
 use server::core::cache::writer::MyCacheWriter;
 use server::core::handler::MyHandlerService;
 use server::core::redis::MyRedisService;
 use server::core::server::{MyServerService, ServerService};
-
-pub fn create_temp_folder() -> TempDir {
-    TempDir::new("mini-redis-integration-tests").unwrap()
-}
 
 pub fn start_server(address: &str, cache_folder: &str) -> Receiver<u16> {
     let (started_signal_tx, started_signal_rx) = oneshot::channel::<u16>();
@@ -32,7 +28,8 @@ fn new_server(address: &str, cache_folder: &str) -> MyServerService {
         cache_reader_service,
         cache_writer_service,
     ));
-    let handler_service = Arc::new(MyHandlerService::new(redis_service));
+    let broker_service = Arc::new(MyBrokerService::new());
+    let handler_service = Arc::new(MyHandlerService::new(redis_service, broker_service));
 
     MyServerService::new(address, handler_service)
 }

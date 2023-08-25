@@ -34,7 +34,7 @@ pub trait BrokerService: Send + Sync {
         topic: String,
     );
     async fn unsubscribe(&self, socket_addr: SocketAddr);
-    async fn publish(&self, socket_addr: SocketAddr, message: Vec<u8>);
+    async fn publish(&self, publisher_addr: SocketAddr, message: Vec<u8>);
 }
 
 pub struct MyBrokerService {
@@ -83,10 +83,14 @@ impl BrokerService for MyBrokerService {
         }
     }
 
-    async fn publish(&self, socket_addr: SocketAddr, message: Vec<u8>) {
-        if let Some(topic) = self.clients.read().await.get(&socket_addr) {
+    async fn publish(&self, publisher_addr: SocketAddr, message: Vec<u8>) {
+        if let Some(topic) = self.clients.read().await.get(&publisher_addr) {
             if let Some(subscribers) = self.subscribers.write().await.get(topic) {
                 for sub in subscribers.iter() {
+                    if sub.addr == publisher_addr {
+                        // skip publishing to the sender
+                        continue;
+                    }
                     let _ = sub.sender.send(message.clone());
                 }
             }

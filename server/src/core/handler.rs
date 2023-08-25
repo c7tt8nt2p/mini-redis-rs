@@ -29,7 +29,7 @@ pub trait HandlerService: Send + Sync {
     );
     async fn handle_other_cmd(&self, writer: Arc<Mutex<OwnedWriteHalf>>);
 
-    async fn handle_publish_cmd(&self, socket_addr: SocketAddr, message: Vec<u8>);
+    async fn handle_publish_cmd(&self, publisher_addr: SocketAddr, message: Vec<u8>);
     async fn handle_unsubscribe_cmd(
         &self,
         socket_addr: SocketAddr,
@@ -128,8 +128,8 @@ impl HandlerService for MyHandlerService {
         writer.lock().await.write_all(b"unknown\n").await.unwrap();
     }
 
-    async fn handle_publish_cmd(&self, socket_addr: SocketAddr, message: Vec<u8>) {
-        self.broker_service.publish(socket_addr, message).await;
+    async fn handle_publish_cmd(&self, publisher_addr: SocketAddr, message: Vec<u8>) {
+        self.broker_service.publish(publisher_addr, message).await;
     }
 
     async fn handle_unsubscribe_cmd(
