@@ -1,15 +1,20 @@
-﻿use tokio::io::{AsyncReadExt, AsyncWriteExt, stdin};
+﻿use tokio::io::{stdin, AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 
-use client::config::app_config::CONNECTION_ADDRESS;
-use client::core::client::ClientService;
-use client::core::client::MyClientService;
+use client::core::client::{ClientService, MyNonSecureClientService};
 
+const CONNECTION_HOST: &str = "localhost";
+const CONNECTION_PORT: &str = "6973";
+const _CERT_FILE_PATH: &str =
+    "/Users/chantapat.t/CLionProjects/mini-redis-rs/client/src/config/ssl/client.crt";
+const _KEY_FILE_PATH: &str =
+    "/Users/chantapat.t/CLionProjects/mini-redis-rs/client/src/config/ssl/client.key";
 const DEFAULT_BUFFER_SIZE: usize = 1024;
 
 #[tokio::main]
 async fn main() {
-    let client_service = MyClientService::new(CONNECTION_ADDRESS);
+    // let client_service = MyClientService::new(CONNECTION_ADDRESS, CERT_FILE_PATH, KEY_FILE_PATH);
+    let client_service = MyNonSecureClientService::new(CONNECTION_HOST, CONNECTION_PORT);
     let socket = client_service.connect().await;
     println!("connected to server");
     let (mut reader, mut writer) = socket.into_split();

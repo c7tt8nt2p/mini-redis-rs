@@ -1,3 +1,6 @@
+#[cfg(test)]
+use mockall::{automock, mock, predicate::*};
+
 use std::collections::HashMap;
 use std::io;
 use std::sync::Arc;
@@ -8,6 +11,7 @@ use tokio::sync::RwLock;
 use crate::core::cache::reader::CacheReaderService;
 use crate::core::cache::writer::CacheWriterService;
 
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub trait RedisService: Send + Sync {
     async fn get(&self, key: &str) -> Option<Vec<u8>>;

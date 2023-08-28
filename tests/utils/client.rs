@@ -1,10 +1,10 @@
 use tokio::io::AsyncReadExt;
 use tokio::net::tcp::ReadHalf;
 
-use client::core::client::MyClientService;
+use client::core::client::MyNonSecureClientService;
 
-pub fn new_client(address: &str) -> MyClientService {
-    MyClientService::new(address)
+pub fn new_client(address: &str) -> MyNonSecureClientService {
+    MyNonSecureClientService::new(address)
 }
 
 pub async fn read_message(reader: &mut ReadHalf<'_>) -> Vec<u8> {

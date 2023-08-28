@@ -1,21 +1,22 @@
-﻿
-#[cfg(test)]
-use mockall::{automock, mock, predicate::*};
-
-use std::net::SocketAddr;
+﻿use std::net::SocketAddr;
+use std::path::Path;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+#[cfg(test)]
+use mockall::{automock, predicate::*};
 use tokio::io;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::{TcpListener, TcpStream};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio::net::TcpListener;
+use tokio::sync::{Mutex, oneshot};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
-use tokio::sync::{oneshot, Mutex};
+use tokio_rustls::rustls::ServerConfig;
+use tokio_rustls::TlsAcceptor;
 
-use crate::core::handler::HandlerService;
+use crate::core::handler::{HandlerService, MyHandlerService};
 use crate::core::parser::{
-    parse_non_subscription_command, parse_subscription_command, NonSubscriptionCmdType,
+    NonSubscriptionCmdType, parse_non_subscription_command, parse_subscription_command,
     SubscriptionCmdType,
 };
 
@@ -29,23 +30,105 @@ pub trait ServerService: Send + Sync {
 }
 
 pub struct MyServerService {
-    connection_address: String,
+    binding_host: String,
+    binding_port: String,
+    cert_file_path: String,
+    key_file_path: String,
     handler_service: Arc<dyn HandlerService>,
 }
 
 impl MyServerService {
-    pub fn new(connection_address: &str, handler_service: Arc<dyn HandlerService>) -> Self {
+    pub fn new(
+        binding_host: &str,
+        binding_port: &str,
+        cert_file_path: &str,
+        key_file_path: &str,
+        handler_service: Arc<dyn HandlerService>,
+    ) -> Self {
         Self {
-            connection_address: connection_address.to_owned(),
+            binding_host: binding_host.to_owned(),
+            binding_port: binding_port.to_owned(),
+            cert_file_path: cert_file_path.to_owned(),
+            key_file_path: key_file_path.to_owned(),
             handler_service,
         }
+    }
+
+    fn load_tls_config(cert_file_path: &str, key_file_path: &str) -> io::Result<ServerConfig> {
+        let certs = utils::cert::load_cert(Path::new(cert_file_path))?;
+        let mut keys = utils::cert::load_key(Path::new(key_file_path))?;
+        let config = ServerConfig::builder()
+            .with_safe_defaults()
+            .with_no_client_auth()
+            .with_single_cert(certs, keys.remove(0))
+            .map_err(|err| io::Error::new(io::ErrorKind::InvalidInput, err))?;
+        Ok(config)
+    }
+
+    async fn accept_new_connection(
+        listener: &TcpListener,
+        tls_acceptor: TlsAcceptor,
+    ) -> Option<(TcpStream, SocketAddr)> {
+        let (tls_socket, address) = match Self::accept_as_tls(listener, tls_acceptor).await {
+            Ok((tls_socket, address)) => (tls_socket, address),
+            Err(err) => {
+                println!("failed to accept a new connection: {:?}", err);
+                return None;
+            }
+        };
+        Some((tls_socket, address))
+    }
+
+    async fn accept_as_tls(
+        listener: &TcpListener,
+        acceptor: TlsAcceptor,
+    ) -> io::Result<(TcpStream, SocketAddr)> {
+        let (socket, address) = listener.accept().await?;
+        let stream = acceptor.accept(socket).await?;
+        let (tls_socket, _server_connection) = stream.into_inner();
+        Ok((tls_socket, address))
+    }
+}
+
+pub struct MyNonSecureServerService {
+    binding_host: String,
+    binding_port: String,
+    handler_service: Arc<dyn HandlerService>,
+}
+
+impl MyNonSecureServerService {
+    pub fn new(
+        binding_host: &str,
+        binding_port: &str,
+        handler_service: Arc<MyHandlerService>,
+    ) -> Self {
+        Self {
+            binding_host: binding_host.to_owned(),
+            binding_port: binding_port.to_owned(),
+            handler_service,
+        }
+    }
+
+    async fn accept_new_connection(listener: &TcpListener) -> Option<(TcpStream, SocketAddr)> {
+        let (socket, address) = match listener.accept().await {
+            Ok((tls_socket, address)) => (tls_socket, address),
+            Err(err) => {
+                println!("failed to accept a new connection: {:?}", err);
+                return None;
+            }
+        };
+        Some((socket, address))
     }
 }
 
 #[async_trait]
 impl ServerService for MyServerService {
     async fn start(&self, started_signal_tx: oneshot::Sender<u16>) -> io::Result<()> {
-        let listener = TcpListener::bind(self.connection_address.to_owned()).await?;
+        let config = Self::load_tls_config(&self.cert_file_path, &self.key_file_path)?;
+        let tls_acceptor = TlsAcceptor::from(Arc::new(config));
+
+        let address = format!("{}:{}", self.binding_host, self.binding_port);
+        let listener = TcpListener::bind(address.clone()).await?;
         println!("===============================================================================================");
         self.handler_service.handle_cache_recovering().await?;
         println!("===============================================================================================");
@@ -55,7 +138,37 @@ impl ServerService for MyServerService {
         started_signal_tx.send(port).unwrap();
 
         loop {
-            let (socket, address) = listener.accept().await?;
+            let tls_acceptor = tls_acceptor.clone();
+            let Some((tls_socket, address)) = Self::accept_new_connection(&listener, tls_acceptor).await else { continue} ;
+            println!("[{}] has connected", address);
+
+            let handler_service = Arc::clone(&self.handler_service);
+            let (reader, writer) = tls_socket.into_split();
+            let reader = Arc::new(Mutex::new(reader));
+            let writer = Arc::new(Mutex::new(writer));
+
+            tokio::spawn(async move {
+                handle_connection(handler_service, reader, writer, address).await
+            });
+        }
+    }
+}
+
+#[async_trait]
+impl ServerService for MyNonSecureServerService {
+    async fn start(&self, started_signal_tx: oneshot::Sender<u16>) -> io::Result<()> {
+        let address = format!("{}:{}", self.binding_host, self.binding_port);
+        let listener = TcpListener::bind(address.clone()).await?;
+        println!("===============================================================================================");
+        self.handler_service.handle_cache_recovering().await?;
+        println!("===============================================================================================");
+        println!("server started...",);
+
+        let port = listener.local_addr().unwrap().port();
+        started_signal_tx.send(port).unwrap();
+
+        loop {
+            let Some((socket, address)) = Self::accept_new_connection(&listener).await else { continue} ;
             println!("[{}] has connected", address);
 
             let handler_service = Arc::clone(&self.handler_service);
