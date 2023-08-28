@@ -6,3 +6,8 @@ test-integration:
 
 test-all:
 	cargo test --workspace
+
+test-all-coverage-html:
+	# cargo +stable install cargo-llvm-cov --locked
+	cargo llvm-cov --workspace --html
+	open target/llvm-cov/html/index.html
