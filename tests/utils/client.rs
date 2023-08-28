@@ -3,8 +3,8 @@ use tokio::net::tcp::ReadHalf;
 
 use client::core::client::MyNonSecureClientService;
 
-pub fn new_client(address: &str) -> MyNonSecureClientService {
-    MyNonSecureClientService::new(address)
+pub fn new_client(address: &str, port: &str) -> MyNonSecureClientService {
+    MyNonSecureClientService::new(address, port)
 }
 
 pub async fn read_message(reader: &mut ReadHalf<'_>) -> Vec<u8> {

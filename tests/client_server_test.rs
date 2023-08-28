@@ -2,18 +2,19 @@ pub mod utils;
 
 mod client_server {
     use tokio::fs::metadata;
+    use crate::utils::TEST_CONNECTION_HOST;
+    use crate::utils::TEST_CONNECTION_PORT;
 
     use super::utils;
     use super::utils::client as client_utils;
     use super::utils::file as file_utils;
     use super::utils::server as server_utils;
 
-    const TEST_CONNECTION_ADDRESS: &str = "localhost:0";
 
     #[tokio::test]
     async fn send_ping_should_return_pong() {
         let temp_dir = file_utils::create_temp_folder();
-        let port = utils::start_server(TEST_CONNECTION_ADDRESS, &temp_dir).await;
+        let port = utils::start_server(TEST_CONNECTION_HOST, TEST_CONNECTION_PORT, &temp_dir).await;
         let mut socket = utils::start_client(port).await;
         let (mut reader, mut writer) = socket.split();
 
@@ -26,7 +27,7 @@ mod client_server {
     #[tokio::test]
     async fn send_ping_with_data_should_return_data() {
         let temp_dir = file_utils::create_temp_folder();
-        let port = utils::start_server(TEST_CONNECTION_ADDRESS, &temp_dir).await;
+        let port = utils::start_server(TEST_CONNECTION_HOST, TEST_CONNECTION_PORT, &temp_dir).await;
         let mut socket = utils::start_client(port).await;
         let (mut reader, mut writer) = socket.split();
 
@@ -42,7 +43,7 @@ mod client_server {
     #[tokio::test]
     async fn send_xxx_should_return_unknown() {
         let temp_dir = file_utils::create_temp_folder();
-        let port = utils::start_server(TEST_CONNECTION_ADDRESS, &temp_dir).await;
+        let port = utils::start_server(TEST_CONNECTION_HOST, TEST_CONNECTION_PORT, &temp_dir).await;
         let mut socket = utils::start_client(port).await;
         let (mut reader, mut writer) = socket.split();
 
@@ -55,7 +56,7 @@ mod client_server {
     #[tokio::test]
     async fn set_and_get_should_return_data() {
         let temp_dir = file_utils::create_temp_folder();
-        let port = utils::start_server(TEST_CONNECTION_ADDRESS, &temp_dir).await;
+        let port = utils::start_server(TEST_CONNECTION_HOST, TEST_CONNECTION_PORT, &temp_dir).await;
         let mut socket = utils::start_client(port).await;
         let (mut reader, mut writer) = socket.split();
 
@@ -77,7 +78,7 @@ mod client_server {
         let data: [u8; 11] = [1, 0, 0, 0, 0, 0, 0, 0, 2, 104, 105];
         file_utils::write_data_to_file(&temp_dir, "testcache", &data).await;
 
-        let port = utils::start_server(TEST_CONNECTION_ADDRESS, &temp_dir).await;
+        let port = utils::start_server(TEST_CONNECTION_HOST, TEST_CONNECTION_PORT, &temp_dir).await;
         let mut socket = utils::start_client(port).await;
         let (mut reader, mut writer) = socket.split();
 
@@ -89,7 +90,7 @@ mod client_server {
     #[tokio::test]
     async fn set_should_cache_to_file() {
         let temp_dir = file_utils::create_temp_folder();
-        let port = utils::start_server(TEST_CONNECTION_ADDRESS, &temp_dir).await;
+        let port = utils::start_server(TEST_CONNECTION_HOST, TEST_CONNECTION_PORT, &temp_dir).await;
         let mut socket = utils::start_client(port).await;
         let (mut reader, mut writer) = socket.split();
 

@@ -9,13 +9,16 @@ pub mod client;
 pub mod file;
 pub mod server;
 
-pub async fn start_server(address: &str, temp_dir: &TempDir) -> u16 {
+pub const TEST_CONNECTION_HOST: &str = "localhost";
+pub const TEST_CONNECTION_PORT: &str = "0";
+
+pub async fn start_server(host: &str, port: &str, temp_dir: &TempDir) -> u16 {
     let temp_dir = temp_dir.path().display().to_string();
-    let rx = server::start_server(address, &temp_dir);
+    let rx = server::start_server(host, port, &temp_dir);
     rx.await.unwrap()
 }
 
 pub async fn start_client(port: u16) -> TcpStream {
-    let client = new_client(&format!("localhost:{}", port));
+    let client = new_client("localhost", &port.to_string());
     client.connect().await
 }

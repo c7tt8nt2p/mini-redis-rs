@@ -1,18 +1,16 @@
 pub mod utils;
 
 mod pub_sub {
-
     use super::utils;
     use super::utils::client as client_utils;
     use super::utils::file as file_utils;
     use super::utils::server as server_utils;
-
-    const TEST_CONNECTION_ADDRESS: &str = "localhost:0";
+    use crate::utils::{TEST_CONNECTION_HOST, TEST_CONNECTION_PORT};
 
     #[tokio::test]
     async fn publish_message_to_all_subscribers() {
         let temp_dir = file_utils::create_temp_folder();
-        let port = utils::start_server(TEST_CONNECTION_ADDRESS, &temp_dir).await;
+        let port = utils::start_server(TEST_CONNECTION_HOST, TEST_CONNECTION_PORT, &temp_dir).await;
         let mut client1 = utils::start_client(port).await;
         let mut client2 = utils::start_client(port).await;
         let (mut reader1, mut writer1) = client1.split();
