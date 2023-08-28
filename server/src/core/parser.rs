@@ -139,14 +139,14 @@ mod tests {
     async fn test_parse_exit() {
         let cmd = "exit".as_bytes().to_vec();
         let cmd_type = parse_non_subscription_command(cmd);
-        assert_eq!(NonSubscriptionCmdType::Exit, cmd_type);
+        assert_eq!(cmd_type, NonSubscriptionCmdType::Exit);
     }
 
     #[tokio::test]
     async fn test_parse_ping() {
         let cmd = "ping".as_bytes().to_vec();
         let cmd_type = parse_non_subscription_command(cmd);
-        assert_eq!(NonSubscriptionCmdType::Ping, cmd_type);
+        assert_eq!(cmd_type, NonSubscriptionCmdType::Ping);
     }
 
     #[tokio::test]
@@ -154,8 +154,8 @@ mod tests {
         let cmd = "ping xxx".as_bytes().to_vec();
         let cmd_type = parse_non_subscription_command(cmd);
         assert_eq!(
-            NonSubscriptionCmdType::PingValue("xxx".as_bytes().to_vec()),
-            cmd_type
+            cmd_type,
+            NonSubscriptionCmdType::PingValue("xxx".as_bytes().to_vec())
         );
     }
 
@@ -163,7 +163,7 @@ mod tests {
     async fn test_parse_get() {
         let cmd = "get a".as_bytes().to_vec();
         let cmd_type = parse_non_subscription_command(cmd);
-        assert_eq!(NonSubscriptionCmdType::Get("a".to_owned()), cmd_type);
+        assert_eq!(cmd_type, NonSubscriptionCmdType::Get("a".to_owned()));
     }
 
     #[tokio::test]
@@ -171,8 +171,8 @@ mod tests {
         let cmd = "set a a".as_bytes().to_vec();
         let cmd_type = parse_non_subscription_command(cmd);
         assert_eq!(
-            NonSubscriptionCmdType::Set("a".to_owned(), "a".as_bytes().to_vec()),
-            cmd_type
+            cmd_type,
+            NonSubscriptionCmdType::Set("a".to_owned(), "a".as_bytes().to_vec())
         );
     }
 
@@ -181,8 +181,8 @@ mod tests {
         let cmd = "subscribe topic1".as_bytes().to_vec();
         let cmd_type = parse_non_subscription_command(cmd);
         assert_eq!(
-            NonSubscriptionCmdType::Subscribe("topic1".to_owned()),
-            cmd_type
+            cmd_type,
+            NonSubscriptionCmdType::Subscribe("topic1".to_owned())
         );
     }
 
@@ -190,14 +190,14 @@ mod tests {
     async fn test_parse_other() {
         let cmd = "xxx".as_bytes().to_vec();
         let cmd_type = parse_non_subscription_command(cmd);
-        assert_eq!(NonSubscriptionCmdType::Other, cmd_type);
+        assert_eq!(cmd_type, NonSubscriptionCmdType::Other);
     }
 
     #[tokio::test]
     async fn test_parse_unsubscribe() {
         let cmd = "unsubscribe".as_bytes().to_vec();
         let cmd_type = parse_subscription_command(cmd);
-        assert_eq!(SubscriptionCmdType::Unsubscribe, cmd_type);
+        assert_eq!(cmd_type, SubscriptionCmdType::Unsubscribe);
     }
 
     #[tokio::test]
@@ -205,8 +205,8 @@ mod tests {
         let cmd = "hello 123".as_bytes().to_vec();
         let cmd_type = parse_subscription_command(cmd);
         assert_eq!(
-            SubscriptionCmdType::Publish("hello 123".as_bytes().to_vec()),
-            cmd_type
+            cmd_type,
+            SubscriptionCmdType::Publish("hello 123".as_bytes().to_vec())
         );
     }
 }

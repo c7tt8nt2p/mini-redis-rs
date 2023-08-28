@@ -22,3 +22,8 @@ pub async fn start_client(port: u16) -> TcpStream {
     let client = new_client("localhost", &port.to_string());
     client.connect().await
 }
+
+// fn mut_mock<T>(mock: &mut Arc<T>) -> &mut T {
+//     let ptr: *mut T = Arc::as_ptr(mock) as *mut T;
+//     unsafe { ptr.as_mut().unwrap() }
+// }

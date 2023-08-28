@@ -21,7 +21,7 @@ mod client_server {
         server_utils::write_message(&mut writer, "ping").await;
         let response = client_utils::read_message(&mut reader).await;
 
-        assert_eq!(vec![112, 111, 110, 103, 10], response);
+        assert_eq!(response, vec![112, 111, 110, 103, 10]);
     }
 
     #[tokio::test]
@@ -35,8 +35,8 @@ mod client_server {
         let response = client_utils::read_message(&mut reader).await;
 
         assert_eq!(
-            vec![104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 10],
-            response
+            response,
+            vec![104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 10]
         );
     }
 
@@ -50,7 +50,7 @@ mod client_server {
         server_utils::write_message(&mut writer, "xxx").await;
         let response = client_utils::read_message(&mut reader).await;
 
-        assert_eq!(vec![117, 110, 107, 110, 111, 119, 110, 10], response);
+        assert_eq!(response, vec![117, 110, 107, 110, 111, 119, 110, 10]);
     }
 
     #[tokio::test]
@@ -62,13 +62,13 @@ mod client_server {
 
         server_utils::write_message(&mut writer, "set a hello world").await;
         let set_response = client_utils::read_message(&mut reader).await;
-        assert_eq!(vec![115, 101, 116, 32, 111, 107, 10], set_response);
+        assert_eq!(set_response, vec![115, 101, 116, 32, 111, 107, 10]);
 
         server_utils::write_message(&mut writer, "get a").await;
         let get_response = client_utils::read_message(&mut reader).await;
         assert_eq!(
-            vec![104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 10],
-            get_response
+            get_response,
+            vec![104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 10]
         );
     }
 

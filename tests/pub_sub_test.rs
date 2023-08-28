@@ -20,29 +20,29 @@ mod pub_sub {
         server_utils::write_message(&mut writer1, "subscribe topicA").await;
         let subscribed_ok_response = client_utils::read_message(&mut reader1).await;
         assert_eq!(
-            vec![115, 117, 98, 115, 99, 114, 105, 98, 101, 100, 32, 111, 107, 10],
-            subscribed_ok_response
+            subscribed_ok_response,
+            vec![115, 117, 98, 115, 99, 114, 105, 98, 101, 100, 32, 111, 107, 10]
         );
 
         // client2 subscribes
         server_utils::write_message(&mut writer2, "subscribe topicA").await;
         let subscribed_ok_response = client_utils::read_message(&mut reader2).await;
         assert_eq!(
-            vec![115, 117, 98, 115, 99, 114, 105, 98, 101, 100, 32, 111, 107, 10],
-            subscribed_ok_response
+            subscribed_ok_response,
+            vec![115, 117, 98, 115, 99, 114, 105, 98, 101, 100, 32, 111, 107, 10]
         );
 
         // client1 publishes a message, client2 reads
         server_utils::write_message(&mut writer1, "hello there").await;
         let message = client_utils::read_message(&mut reader2).await;
         assert_eq!(
-            vec![104, 101, 108, 108, 111, 32, 116, 104, 101, 114, 101],
-            message
+            message,
+            vec![104, 101, 108, 108, 111, 32, 116, 104, 101, 114, 101]
         );
 
         // client2 publishes a message, client1 reads
         server_utils::write_message(&mut writer2, "hi there").await;
         let message = client_utils::read_message(&mut reader1).await;
-        assert_eq!(vec![104, 105, 32, 116, 104, 101, 114, 101], message);
+        assert_eq!(message, vec![104, 105, 32, 116, 104, 101, 114, 101]);
     }
 }

@@ -1,5 +1,3 @@
-#[cfg(test)]
-use mockall::{automock, mock, predicate::*};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -148,4 +146,38 @@ impl HandlerService for MyHandlerService {
             .is_subscription_connection(socket_addr)
             .await
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::core::broker::MockBrokerService;
+    use crate::core::handler::{HandlerService, MyHandlerService};
+    use crate::core::redis::MockRedisService;
+    use mockall::mock;
+    use std::sync::Arc;
+
+    fn mock_deps() -> (MockRedisService, MockBrokerService) {
+        (MockRedisService::new(), MockBrokerService::new())
+    }
+
+    fn new_instance(
+        redis_service: Arc<MockRedisService>,
+        broker_service: Arc<MockBrokerService>,
+    ) -> MyHandlerService {
+        MyHandlerService::new(redis_service, broker_service)
+    }
+
+    #[tokio::test]
+    async fn handle_cache_recovering_should_be_handled() {
+        let (mut redis_service, broker_service) = mock_deps();
+        redis_service
+            .expect_read_cache()
+            .once()
+            .returning(|| Ok(()));
+        let instance = new_instance(Arc::new(redis_service), Arc::new(broker_service));
+
+        let result = instance.handle_cache_recovering().await;
+        assert!(result.is_ok());
+    }
+
 }
