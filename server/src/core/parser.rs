@@ -30,7 +30,7 @@ pub fn parse_non_subscription_command(command: Vec<u8>) -> NonSubscriptionCmdTyp
     } else if is_ping(command_str) {
         NonSubscriptionCmdType::Ping
     } else if is_ping_value(command_str) {
-        let value = extract_ping_with_value(command_str).unwrap_or(Vec::new());
+        let value = extract_ping_with_value(command_str).unwrap_or_default();
         NonSubscriptionCmdType::PingValue(value)
     } else if is_get(command_str) {
         let key = extract_get(command_str);
