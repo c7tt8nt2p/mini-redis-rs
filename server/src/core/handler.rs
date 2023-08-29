@@ -153,7 +153,6 @@ mod tests {
     use crate::core::broker::MockBrokerService;
     use crate::core::handler::{HandlerService, MyHandlerService};
     use crate::core::redis::MockRedisService;
-    use mockall::mock;
     use std::sync::Arc;
 
     fn mock_deps() -> (MockRedisService, MockBrokerService) {

@@ -103,12 +103,89 @@ impl BrokerService for MyBrokerService {
 
 #[cfg(test)]
 mod tests {
+    use std::net::{IpAddr, Ipv4Addr};
+
+    use tokio::sync::mpsc::unbounded_channel;
+
     use super::*;
 
     #[tokio::test]
-    async fn test_my_broker_service_new() {
+    async fn new_should_be_returned() {
         let service = MyBrokerService::new();
         assert!(service.clients.read().await.is_empty());
         assert!(service.subscribers.read().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn subscribe_should_be_ok() {
+        let service = MyBrokerService::new();
+
+        let socket_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 1111);
+        let (tx, _) = unbounded_channel::<Vec<u8>>();
+        let topic = "t1";
+        service
+            .subscribe(socket_addr, tx.clone(), topic.to_owned())
+            .await;
+
+        {
+            let guard = service.subscribers.read().await;
+            let subscriber = guard.get_key_value(topic);
+            assert!(subscriber.is_some());
+            let (topic, sender) = subscriber.unwrap();
+            assert_eq!(topic, "t1");
+            assert_eq!(sender.len(), 1);
+        }
+        {
+            let guard = service.clients.read().await;
+            let client = guard.get_key_value(&socket_addr);
+            assert!(client.is_some());
+            let (_, topic) = client.unwrap();
+            assert_eq!(topic, "t1");
+        }
+    }
+
+    #[tokio::test]
+    async fn unsubscribe_should_be_ok() {
+        let service = MyBrokerService::new();
+
+        let socket_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 1111);
+        let (tx, _) = unbounded_channel::<Vec<u8>>();
+        let topic = "t1";
+        service
+            .subscribe(socket_addr, tx.clone(), topic.to_owned())
+            .await;
+
+        service.unsubscribe(socket_addr).await;
+
+        {
+            let guard = service.subscribers.read().await;
+            let subscribers = guard.get(topic);
+            assert!(subscribers.is_some());
+            assert!(subscribers.unwrap().is_empty());
+        }
+        assert!(service.clients.read().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn publish_should_be_ok() {
+        let service = MyBrokerService::new();
+
+        let socket_addr1 = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 1111);
+        let socket_addr2 = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 1112);
+        let (tx1, _) = unbounded_channel::<Vec<u8>>();
+        let (tx2, mut rx2) = unbounded_channel::<Vec<u8>>();
+
+        let topic = "t1";
+        service
+            .subscribe(socket_addr1, tx1.clone(), topic.to_owned())
+            .await;
+        service
+            .subscribe(socket_addr2, tx2.clone(), topic.to_owned())
+            .await;
+
+        service.publish(socket_addr1, vec![100u8, 110u8]).await;
+
+        let result = rx2.recv().await;
+        assert_eq!(result, Some(vec![100u8, 110u8]));
     }
 }
