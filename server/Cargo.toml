@@ -3,12 +3,9 @@ name = "server"
 version = "0.1.0"
 edition = "2021"
 
-
-# cargo build --bin server
 [[bin]]
 name = "server"
 path = "src/bin/server.rs"
-
 
 [dependencies]
 utils = { path = "../utils" }

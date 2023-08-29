@@ -9,5 +9,4 @@ test-all:
 
 test-all-coverage-html:
 	# cargo +stable install cargo-llvm-cov --locked
-	cargo llvm-cov --workspace --html
-	open target/llvm-cov/html/index.html
+	cargo llvm-cov --workspace --html --open
