@@ -43,9 +43,9 @@ pub fn from_tlv(value: Vec<u8>) -> Vec<u8> {
     let Some(tlv_type) = TLVType::from_u8(value[0]) else { return Vec::new(); };
     match tlv_type {
         TLVType::String | TLVType::Int => {
-            let tlv_length = &value[1..TLV_LENGTH_SIZE + 1];
+            let tlv_length = &value[1..=TLV_LENGTH_SIZE];
             let value_length = usize::from_be_bytes(tlv_length.try_into().unwrap());
-            value[TLV_LENGTH_SIZE + 1..TLV_LENGTH_SIZE + value_length + 1].to_vec()
+            value[TLV_LENGTH_SIZE + 1..=TLV_LENGTH_SIZE + value_length].to_vec()
         }
     }
 }
