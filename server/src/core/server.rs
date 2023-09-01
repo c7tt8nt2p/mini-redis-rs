@@ -204,7 +204,7 @@ async fn handle_connection(
         let tx_cloned = tx.clone();
 
         let Some(read_data) = read(reader_cloned, address.to_string()).await else {
-            handler_service.handle_exit_cmd(writer).await;
+            let _ = handler_service.handle_exit_cmd(writer).await;
             handler_service.handle_unsubscribe_cmd(address, writer_cloned).await;
             break;
         };
@@ -268,7 +268,7 @@ async fn handle_non_subscription_connection(
     let cmd_type = parse_non_subscription_command(data);
     match cmd_type {
         NonSubscriptionCmdType::Exit => {
-            handler_service.handle_exit_cmd(writer).await;
+            let _ = handler_service.handle_exit_cmd(writer).await;
         }
         NonSubscriptionCmdType::Ping => {
             handler_service.handle_ping_cmd(writer).await;
@@ -283,8 +283,9 @@ async fn handle_non_subscription_connection(
             handler_service.handle_set_cmd(writer, key, value).await;
         }
         NonSubscriptionCmdType::Subscribe(topic) => {
+            let peer_addr = writer.lock().await.peer_addr().unwrap();
             handler_service
-                .handle_subscribe_cmd(writer, sender, topic)
+                .handle_subscribe_cmd(writer, sender, peer_addr, topic)
                 .await;
         }
         NonSubscriptionCmdType::Other => {

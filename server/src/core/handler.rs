@@ -3,37 +3,53 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use tokio::io;
-use tokio::io::AsyncWriteExt;
-use tokio::net::tcp::OwnedWriteHalf;
+use tokio::io::{AsyncWrite, AsyncWriteExt};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::Mutex;
 
 use crate::core::broker::BrokerService;
 use crate::core::redis::RedisService;
-use crate::core::tlv::{from_tlv, to_tlv, TLVType};
+use crate::core::tlv::{from_tlv, TLVType, to_tlv};
 
 #[async_trait]
 pub trait HandlerService: Send + Sync {
     async fn handle_cache_recovering(&self) -> io::Result<()>;
 
-    async fn handle_exit_cmd(&self, writer: Arc<Mutex<OwnedWriteHalf>>);
-    async fn handle_ping_cmd(&self, writer: Arc<Mutex<OwnedWriteHalf>>);
-    async fn handle_ping_value_cmd(&self, writer: Arc<Mutex<OwnedWriteHalf>>, value: Vec<u8>);
-    async fn handle_get_cmd(&self, writer: Arc<Mutex<OwnedWriteHalf>>, key: &str);
-    async fn handle_set_cmd(&self, writer: Arc<Mutex<OwnedWriteHalf>>, key: String, value: Vec<u8>);
+    async fn handle_exit_cmd(
+        &self,
+        writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
+    ) -> io::Result<()>;
+    async fn handle_ping_cmd(&self, writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>);
+    async fn handle_ping_value_cmd(
+        &self,
+        writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
+        value: Vec<u8>,
+    );
+    async fn handle_get_cmd(
+        &self,
+        writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
+        key: &str,
+    );
+    async fn handle_set_cmd(
+        &self,
+        writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
+        key: String,
+        value: Vec<u8>,
+    );
     async fn handle_subscribe_cmd(
         &self,
-        writer: Arc<Mutex<OwnedWriteHalf>>,
+        writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
         sender: UnboundedSender<Vec<u8>>,
-        topic: String,
+        topic: SocketAddr,
+        topic0: String,
     );
-    async fn handle_other_cmd(&self, writer: Arc<Mutex<OwnedWriteHalf>>);
+    async fn handle_other_cmd(&self, writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>);
 
     async fn handle_publish_cmd(&self, publisher_addr: SocketAddr, message: Vec<u8>);
     async fn handle_unsubscribe_cmd(
         &self,
         socket_addr: SocketAddr,
-        writer_cloned: Arc<Mutex<OwnedWriteHalf>>,
+        writer_cloned: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
     );
 
     async fn is_subscription_connection(&self, socket_addr: SocketAddr) -> bool;
@@ -62,20 +78,31 @@ impl HandlerService for MyHandlerService {
         self.redis_service.read_cache().await
     }
 
-    async fn handle_exit_cmd(&self, writer: Arc<Mutex<OwnedWriteHalf>>) {
-        let _ = writer.lock().await.shutdown().await;
+    async fn handle_exit_cmd(
+        &self,
+        writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
+    ) -> io::Result<()> {
+        writer.lock().await.shutdown().await
     }
 
-    async fn handle_ping_cmd(&self, writer: Arc<Mutex<OwnedWriteHalf>>) {
+    async fn handle_ping_cmd(&self, writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>) {
         writer.lock().await.write_all(b"pong\n").await.unwrap();
     }
 
-    async fn handle_ping_value_cmd(&self, writer: Arc<Mutex<OwnedWriteHalf>>, mut value: Vec<u8>) {
+    async fn handle_ping_value_cmd(
+        &self,
+        writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
+        mut value: Vec<u8>,
+    ) {
         value.push(b'\n');
         writer.lock().await.write_all(&value).await.unwrap();
     }
 
-    async fn handle_get_cmd(&self, writer: Arc<Mutex<OwnedWriteHalf>>, key: &str) {
+    async fn handle_get_cmd(
+        &self,
+        writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
+        key: &str,
+    ) {
         let tlv = self.redis_service.get(key).await;
         if let Some(tlv) = tlv {
             let mut value = from_tlv(tlv);
@@ -88,7 +115,7 @@ impl HandlerService for MyHandlerService {
 
     async fn handle_set_cmd(
         &self,
-        writer: Arc<Mutex<OwnedWriteHalf>>,
+        writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
         key: String,
         value: Vec<u8>,
     ) {
@@ -108,11 +135,11 @@ impl HandlerService for MyHandlerService {
 
     async fn handle_subscribe_cmd(
         &self,
-        writer: Arc<Mutex<OwnedWriteHalf>>,
+        writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
         sender: UnboundedSender<Vec<u8>>,
+        socket_addr: SocketAddr,
         topic: String,
     ) {
-        let socket_addr = writer.lock().await.peer_addr().unwrap();
         self.broker_service
             .subscribe(socket_addr, sender, topic)
             .await;
@@ -124,7 +151,7 @@ impl HandlerService for MyHandlerService {
             .unwrap();
     }
 
-    async fn handle_other_cmd(&self, writer: Arc<Mutex<OwnedWriteHalf>>) {
+    async fn handle_other_cmd(&self, writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>) {
         writer.lock().await.write_all(b"unknown\n").await.unwrap();
     }
 
@@ -135,7 +162,7 @@ impl HandlerService for MyHandlerService {
     async fn handle_unsubscribe_cmd(
         &self,
         socket_addr: SocketAddr,
-        writer: Arc<Mutex<OwnedWriteHalf>>,
+        writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
     ) {
         self.broker_service.unsubscribe(socket_addr).await;
         let _ = writer.lock().await.write_all(b"ubnsubscribed ok\n").await;
@@ -150,10 +177,21 @@ impl HandlerService for MyHandlerService {
 
 #[cfg(test)]
 mod tests {
+    use std::io;
+    use std::io::{Error, ErrorKind};
+    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+    use std::pin::Pin;
+    use std::sync::Arc;
+    use std::task::{Context, Poll};
+
+    use mockall::mock;
+    use mockall::predicate::eq;
+    use tokio::io::AsyncWrite;
+    use tokio::sync::Mutex;
+
     use crate::core::broker::MockBrokerService;
     use crate::core::handler::{HandlerService, MyHandlerService};
     use crate::core::redis::MockRedisService;
-    use std::sync::Arc;
 
     fn mock_deps() -> (MockRedisService, MockBrokerService) {
         (MockRedisService::new(), MockBrokerService::new())
@@ -164,6 +202,16 @@ mod tests {
         broker_service: Arc<MockBrokerService>,
     ) -> MyHandlerService {
         MyHandlerService::new(redis_service, broker_service)
+    }
+
+    mock! {
+        pub MyAsyncWriter {}
+
+        impl AsyncWrite for MyAsyncWriter {
+            fn poll_write<'a>(self: Pin<&mut Self>,cx: &mut Context<'a>,buf: &[u8]) -> Poll<Result<usize, io::Error>>;
+            fn poll_flush<'a>(self: Pin<&mut Self>,cx: &mut Context<'a>) -> Poll<Result<(), io::Error>>;
+            fn poll_shutdown<'a>(self: Pin<&mut Self>,cx: &mut Context<'a>) -> Poll<Result<(), io::Error>>;
+        }
     }
 
     #[tokio::test]
@@ -179,4 +227,182 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    #[tokio::test]
+    async fn handle_exit_cmd_should_be_handled() {
+        let (redis_service, broker_service) = mock_deps();
+        let instance = new_instance(Arc::new(redis_service), Arc::new(broker_service));
+        let mut writer = MockMyAsyncWriter::new();
+
+        writer
+            .expect_poll_shutdown()
+            .once()
+            .returning(|_| Poll::Ready(Ok(())));
+
+        let result = instance.handle_exit_cmd(Arc::new(Mutex::new(writer))).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn handle_ping_cmd_should_be_handled() {
+        let (redis_service, broker_service) = mock_deps();
+        let instance = new_instance(Arc::new(redis_service), Arc::new(broker_service));
+        let mut writer = MockMyAsyncWriter::new();
+
+        writer
+            .expect_poll_write()
+            .returning(|_, _| Poll::Ready(Ok(1usize)));
+
+        instance.handle_ping_cmd(Arc::new(Mutex::new(writer))).await;
+    }
+
+    #[tokio::test]
+    async fn handle_ping_value_cmd_should_be_handled() {
+        let (redis_service, broker_service) = mock_deps();
+        let instance = new_instance(Arc::new(redis_service), Arc::new(broker_service));
+        let mut writer = MockMyAsyncWriter::new();
+
+        writer
+            .expect_poll_write()
+            .returning(|_, _| Poll::Ready(Ok(1usize)));
+        let value = vec![111u8, 122u8];
+
+        instance
+            .handle_ping_value_cmd(Arc::new(Mutex::new(writer)), value)
+            .await;
+    }
+
+    #[tokio::test]
+    async fn handle_set_cmd_should_be_handled_when_cache_ok() {
+        let (mut redis_service, broker_service) = mock_deps();
+
+        redis_service
+            .expect_set()
+            .with(
+                eq("key1".to_owned()),
+                eq(vec![1, 0, 0, 0, 0, 0, 0, 0, 2, 55, 66]),
+            )
+            .once()
+            .returning(|_, _| ());
+        redis_service
+            .expect_write_cache()
+            .with(
+                eq("key1".to_owned()),
+                eq(vec![1, 0, 0, 0, 0, 0, 0, 0, 2, 55, 66]),
+            )
+            .once()
+            .returning(|_, _| Ok(()));
+
+        redis_service.expect_remove().never();
+
+        let instance = new_instance(Arc::new(redis_service), Arc::new(broker_service));
+        let mut writer = MockMyAsyncWriter::new();
+        writer
+            .expect_poll_write()
+            .returning(|_, _| Poll::Ready(Ok(1usize)));
+
+        instance
+            .handle_set_cmd(
+                Arc::new(Mutex::new(writer)),
+                "key1".to_owned(),
+                vec![55u8, 66u8],
+            )
+            .await;
+    }
+
+    #[tokio::test]
+    async fn handle_set_cmd_should_be_handled_when_cache_err() {
+        let (mut redis_service, broker_service) = mock_deps();
+
+        redis_service
+            .expect_set()
+            .with(
+                eq("key1".to_owned()),
+                eq(vec![1, 0, 0, 0, 0, 0, 0, 0, 2, 44, 45]),
+            )
+            .once()
+            .returning(|_, _| ());
+        redis_service
+            .expect_write_cache()
+            .with(
+                eq("key1".to_owned()),
+                eq(vec![1, 0, 0, 0, 0, 0, 0, 0, 2, 44, 45]),
+            )
+            .once()
+            .returning(|_, _| Err(Error::new(ErrorKind::Other, "Other")));
+
+        redis_service
+            .expect_remove()
+            .with(eq("key1".to_owned()))
+            .once()
+            .returning(|_| ());
+
+        let instance = new_instance(Arc::new(redis_service), Arc::new(broker_service));
+        let mut writer = MockMyAsyncWriter::new();
+        writer
+            .expect_poll_write()
+            .returning(|_, _| Poll::Ready(Ok(1usize)));
+
+        instance
+            .handle_set_cmd(
+                Arc::new(Mutex::new(writer)),
+                "key1".to_owned(),
+                vec![44u8, 45u8],
+            )
+            .await;
+    }
+
+    #[tokio::test]
+    async fn handle_publish_cmd_should_be_handled() {
+        let socket_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 1111);
+        let (redis_service, mut broker_service) = mock_deps();
+        broker_service
+            .expect_publish()
+            .with(eq(socket_addr), eq(vec![77u8, 88u8]))
+            .once()
+            .returning(|_, _| ());
+
+        let instance = new_instance(Arc::new(redis_service), Arc::new(broker_service));
+
+        instance
+            .handle_publish_cmd(socket_addr, vec![77u8, 88u8])
+            .await;
+    }
+
+    #[tokio::test]
+    async fn handle_unsubscribe_cmd_should_be_handled() {
+        let socket_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 1111);
+        let (redis_service, mut broker_service) = mock_deps();
+        broker_service
+            .expect_unsubscribe()
+            .with(eq(socket_addr))
+            .once()
+            .returning(|_| ());
+
+        let instance = new_instance(Arc::new(redis_service), Arc::new(broker_service));
+        let mut writer = MockMyAsyncWriter::new();
+        writer
+            .expect_poll_write()
+            .returning(|_, _| Poll::Ready(Ok(1usize)));
+
+        instance
+            .handle_unsubscribe_cmd(socket_addr, Arc::new(Mutex::new(writer)))
+            .await;
+    }
+
+    #[tokio::test]
+    async fn is_subscription_connection_should_be_returned() {
+        let socket_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 1111);
+        let (redis_service, mut broker_service) = mock_deps();
+        broker_service
+            .expect_is_subscription_connection()
+            .with(eq(socket_addr))
+            .once()
+            .returning(|_| true);
+
+        let instance = new_instance(Arc::new(redis_service), Arc::new(broker_service));
+
+        let result = instance.is_subscription_connection(socket_addr).await;
+
+        assert!(result)
+    }
 }
