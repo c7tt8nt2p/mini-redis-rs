@@ -17,39 +17,39 @@ pub trait HandlerService: Send + Sync {
 
     async fn handle_exit_cmd(
         &self,
-        writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
+        writer: Arc<Mutex<dyn AsyncWrite + Send + Unpin>>,
     ) -> io::Result<()>;
-    async fn handle_ping_cmd(&self, writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>);
+    async fn handle_ping_cmd(&self, writer: Arc<Mutex<dyn AsyncWrite + Send + Unpin>>);
     async fn handle_ping_value_cmd(
         &self,
-        writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
+        writer: Arc<Mutex<dyn AsyncWrite + Send + Unpin>>,
         value: Vec<u8>,
     );
     async fn handle_get_cmd(
         &self,
-        writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
+        writer: Arc<Mutex<dyn AsyncWrite + Send + Unpin>>,
         key: &str,
     );
     async fn handle_set_cmd(
         &self,
-        writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
+        writer: Arc<Mutex<dyn AsyncWrite + Send + Unpin>>,
         key: String,
         value: Vec<u8>,
     );
     async fn handle_subscribe_cmd(
         &self,
-        writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
+        writer: Arc<Mutex<dyn AsyncWrite + Send + Unpin>>,
         sender: UnboundedSender<Vec<u8>>,
         topic: SocketAddr,
         topic0: String,
     );
-    async fn handle_other_cmd(&self, writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>);
+    async fn handle_other_cmd(&self, writer: Arc<Mutex<dyn AsyncWrite + Send + Unpin>>);
 
     async fn handle_publish_cmd(&self, publisher_addr: SocketAddr, message: Vec<u8>);
     async fn handle_unsubscribe_cmd(
         &self,
         socket_addr: SocketAddr,
-        writer_cloned: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
+        writer_cloned: Arc<Mutex<dyn AsyncWrite + Send + Unpin>>,
     );
 
     async fn is_subscription_connection(&self, socket_addr: SocketAddr) -> bool;
@@ -80,18 +80,18 @@ impl HandlerService for MyHandlerService {
 
     async fn handle_exit_cmd(
         &self,
-        writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
+        writer: Arc<Mutex<dyn AsyncWrite + Send + Unpin>>,
     ) -> io::Result<()> {
         writer.lock().await.shutdown().await
     }
 
-    async fn handle_ping_cmd(&self, writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>) {
+    async fn handle_ping_cmd(&self, writer: Arc<Mutex<dyn AsyncWrite + Send + Unpin>>) {
         writer.lock().await.write_all(b"pong\n").await.unwrap();
     }
 
     async fn handle_ping_value_cmd(
         &self,
-        writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
+        writer: Arc<Mutex<dyn AsyncWrite + Send + Unpin>>,
         mut value: Vec<u8>,
     ) {
         value.push(b'\n');
@@ -100,7 +100,7 @@ impl HandlerService for MyHandlerService {
 
     async fn handle_get_cmd(
         &self,
-        writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
+        writer: Arc<Mutex<dyn AsyncWrite + Send + Unpin>>,
         key: &str,
     ) {
         let tlv = self.redis_service.get(key).await;
@@ -115,7 +115,7 @@ impl HandlerService for MyHandlerService {
 
     async fn handle_set_cmd(
         &self,
-        writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
+        writer: Arc<Mutex<dyn AsyncWrite + Send + Unpin>>,
         key: String,
         value: Vec<u8>,
     ) {
@@ -135,7 +135,7 @@ impl HandlerService for MyHandlerService {
 
     async fn handle_subscribe_cmd(
         &self,
-        writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
+        writer: Arc<Mutex<dyn AsyncWrite + Send + Unpin>>,
         sender: UnboundedSender<Vec<u8>>,
         socket_addr: SocketAddr,
         topic: String,
@@ -151,7 +151,7 @@ impl HandlerService for MyHandlerService {
             .unwrap();
     }
 
-    async fn handle_other_cmd(&self, writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>) {
+    async fn handle_other_cmd(&self, writer: Arc<Mutex<dyn AsyncWrite + Send + Unpin>>) {
         writer.lock().await.write_all(b"unknown\n").await.unwrap();
     }
 
@@ -162,7 +162,7 @@ impl HandlerService for MyHandlerService {
     async fn handle_unsubscribe_cmd(
         &self,
         socket_addr: SocketAddr,
-        writer: Arc<Mutex<dyn AsyncWrite + Send + Sync + Unpin>>,
+        writer: Arc<Mutex<dyn AsyncWrite + Send + Unpin>>,
     ) {
         self.broker_service.unsubscribe(socket_addr).await;
         let _ = writer.lock().await.write_all(b"ubnsubscribed ok\n").await;
